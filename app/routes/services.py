@@ -108,7 +108,7 @@ def update_service_form(
     name: str = Form(...),
     description: str = Form(None),
     price: float = Form(...),
-    is_active: bool = Form(False),
+    is_active: bool = Form(True),
     db: Session = Depends(get_db)
 ):
     service = db.query(Service).filter(Service.id == service_id).first()

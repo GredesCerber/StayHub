@@ -113,7 +113,7 @@ def update_room_form(
     room_type: str = Form(...),
     capacity: int = Form(...),
     price_per_night: float = Form(...),
-    is_available: bool = Form(False),
+    is_available: bool = Form(True),
     description: str = Form(None),
     db: Session = Depends(get_db)
 ):
