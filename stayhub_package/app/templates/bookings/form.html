@@ -1,0 +1,139 @@
+{% extends "base/layout.html" %}
+
+{% block title %}{{ 'Редактирование брони' if booking else 'Новая бронь' }} - StayHub{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-calendar-check"></i> {{ 'Редактирование брони' if booking else 'Создание брони' }}</h4>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> {{ error }}
+                </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ '/bookings/' ~ booking.id ~ '/edit' if booking else '/bookings/new' }}">
+                    <div class="mb-3">
+                        <label for="guest_id" class="form-label">Гость *</label>
+                        <select class="form-select" id="guest_id" name="guest_id" required>
+                            <option value="">Выберите гостя</option>
+                            {% for guest in guests %}
+                            <option value="{{ guest.id }}" {{ 'selected' if booking and booking.guest_id == guest.id }}>
+                                {{ guest.first_name }} {{ guest.last_name }} ({{ guest.email }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="room_id" class="form-label">Номер *</label>
+                        <select class="form-select" id="room_id" name="room_id" required>
+                            <option value="">Выберите номер</option>
+                            {% for room in rooms %}
+                            <option value="{{ room.id }}" {{ 'selected' if booking and booking.room_id == room.id }}>
+                                Номер {{ room.room_number }} - {{ room.room_type }} (${{ "%.2f"|format(room.price_per_night) }}/ночь)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="check_in_date" class="form-label">Дата заезда *</label>
+                            <input type="date" class="form-control" id="check_in_date" name="check_in_date" 
+                                value="{{ (booking.check_in_date if booking else default_check_in)|default('') }}" min="{{ min_check_in|default('') }}" required>
+                            <div class="form-text">Дата не может быть раньше сегодняшнего дня.</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="check_out_date" class="form-label">Дата выезда *</label>
+                            <input type="date" class="form-control" id="check_out_date" name="check_out_date" 
+                                value="{{ (booking.check_out_date if booking else default_check_out)|default('') }}" min="{{ min_check_out|default('') }}" required>
+                            <div class="form-text">Выезд должен быть минимум на сутки позже заезда.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Статус *</label>
+                        <select class="form-select" id="status" name="status" required>
+                            <option value="pending" {{ 'selected' if booking and booking.status == 'pending' }}>Ожидает</option>
+                            <option value="confirmed" {{ 'selected' if booking and booking.status == 'confirmed' }}>Подтверждено</option>
+                            <option value="cancelled" {{ 'selected' if booking and booking.status == 'cancelled' }}>Отменено</option>
+                            <option value="completed" {{ 'selected' if booking and booking.status == 'completed' }}>Завершено</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="/bookings" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-info text-white">
+                            <i class="bi bi-check-circle"></i> {{ 'Обновить' if booking else 'Создать' }} бронь
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const checkInInput = document.getElementById('check_in_date');
+    const checkOutInput = document.getElementById('check_out_date');
+
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    const ensureCheckOutMin = () => {
+        if (!checkInInput) {
+            return;
+        }
+        const checkInValue = checkInInput.value;
+        if (!checkInValue) {
+            return;
+        }
+        const minDate = new Date(checkInValue + 'T00:00:00Z');
+        const nextDay = new Date(minDate.getTime() + oneDayMs);
+        const minString = nextDay.toISOString().split('T')[0];
+        if (checkOutInput) {
+            checkOutInput.min = minString;
+            if (checkOutInput.value && checkOutInput.value <= checkInValue) {
+                checkOutInput.value = minString;
+            }
+        }
+    };
+
+    const validateCheckOut = () => {
+        if (!checkInInput || !checkOutInput) {
+            return;
+        }
+        if (checkOutInput.value && checkInInput.value && checkOutInput.value <= checkInInput.value) {
+            checkOutInput.setCustomValidity('Дата выезда должна быть позже даты заезда.');
+        } else {
+            checkOutInput.setCustomValidity('');
+        }
+    };
+
+    ensureCheckOutMin();
+    validateCheckOut();
+
+    if (checkInInput) {
+        checkInInput.addEventListener('change', () => {
+            ensureCheckOutMin();
+            validateCheckOut();
+        });
+    }
+    if (checkOutInput) {
+        checkOutInput.addEventListener('change', validateCheckOut);
+        checkOutInput.addEventListener('input', validateCheckOut);
+    }
+});
+</script>
+{% endblock %}

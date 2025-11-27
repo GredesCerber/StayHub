@@ -1,0 +1,65 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Типы номеров - StayHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-tags"></i> Типы номеров</h2>
+    <div class="d-flex gap-2">
+        <a class="btn btn-secondary" href="/rooms"><i class="bi bi-door-open"></i> К списку номеров</a>
+        <a class="btn btn-primary" href="/room-types/new"><i class="bi bi-plus-circle"></i> Добавить тип</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if error %}
+        <div class="alert alert-warning" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Код</th>
+                        <th>Название</th>
+                        <th>Рекомендуемая вместимость</th>
+                        <th>Базовая цена</th>
+                        <th>Описание</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in types %}
+                    <tr>
+                        <td><span class="badge bg-secondary">{{ t.code }}</span></td>
+                        <td>{{ t.name }}</td>
+                        <td>{{ t.default_capacity or '—' }}</td>
+                        <td>
+                            {% if t.default_price %}
+                                ${{ '%.2f'|format(t.default_price) }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ t.description or '—' }}</td>
+                        <td>
+                            <a href="/room-types/{{ t.id }}/edit" class="btn btn-sm btn-outline-primary btn-action" title="Редактировать"><i class="bi bi-pencil"></i></a>
+                            <a href="/room-types/{{ t.id }}/delete" class="btn btn-sm btn-outline-danger btn-action" onclick="return confirm('Удалить тип {{ t.name }}?')" title="Удалить"><i class="bi bi-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                            Типы номеров не созданы. <a href="/room-types/new">Добавьте новый тип</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

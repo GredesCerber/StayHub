@@ -1,0 +1,211 @@
+{% extends "base/layout.html" %}
+
+{% block title %}{{ 'Редактирование номера' if room else 'Новый номер' }} - StayHub{% endblock %}
+
+{% set selected_type = room.room_type if room else '' %}
+{% set all_room_types = room_types if room_types is defined else [] %}
+{% set ns = namespace(is_custom_type=False) %}
+{% if not all_room_types %}
+    {% set ns.is_custom_type = True %}
+{% elif selected_type %}
+    {% set ns.is_custom_type = True %}
+    {% for t in all_room_types %}
+        {% if t.name|lower == selected_type|lower %}
+            {% set ns.is_custom_type = False %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-9 col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-door-open"></i> {{ 'Редактирование номера' if room else 'Добавление номера' }}</h4>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    {{ error }}
+                </div>
+                {% endif %}
+                <form method="POST" action="{{ '/rooms/' ~ room.id ~ '/edit' if room else '/rooms/new' }}" id="roomForm">
+                    <div class="mb-3">
+                        <label for="room_number" class="form-label">Номер комнаты *</label>
+                        <input type="text" class="form-control" id="room_number" name="room_number" 
+                               value="{{ room.room_number if room else '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="room_type_select" class="form-label">Тип номера *</label>
+                        <div class="input-group">
+                            <select class="form-select" id="room_type_select" aria-describedby="roomTypeHelp">
+                                <option value="">Выберите тип...</option>
+                                {% for t in all_room_types %}
+                                <option value="{{ t.name }}"
+                                        data-code="{{ t.code }}"
+                                        data-capacity="{{ t.default_capacity if t.default_capacity is not none else '' }}"
+                                        data-price="{{ '%.2f'|format(t.default_price) if t.default_price is not none else '' }}"
+                                        {% if selected_type and t.name|lower == selected_type|lower %}selected{% endif %}>
+                                    {{ t.name }}{% if t.default_capacity or t.default_price %} ({{ t.default_capacity or '—' }} гостей{% if t.default_price %}, ${{ '%.2f'|format(t.default_price) }}{% endif %}){% endif %}
+                                </option>
+                                {% endfor %}
+                                <option value="__custom__" {% if ns.is_custom_type %}selected{% endif %}>Другой вариант</option>
+                            </select>
+                            <input type="hidden" name="room_type" id="room_type_value" value="{{ selected_type }}">
+                        </div>
+                        <div id="customRoomTypeGroup" class="mt-2 {% if not ns.is_custom_type %}d-none{% endif %}">
+                            <input type="text" class="form-control" id="room_type_custom" placeholder="Введите собственный тип" value="{{ selected_type if ns.is_custom_type else '' }}">
+                        </div>
+                        <div class="form-text" id="roomTypeHelp">Настройте справочник типов в разделе "Типы номеров".</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="capacity" class="form-label">Вместимость *</label>
+                            <input type="number" class="form-control" id="capacity" name="capacity" 
+                                   value="{{ room.capacity if room else '' }}" min="1" required placeholder="Например: 2">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="price_per_night" class="form-label">Стоимость за ночь ($) *</label>
+                            <input type="number" class="form-control" id="price_per_night" name="price_per_night" 
+                                   value="{{ room.price_per_night if room else '' }}" step="0.01" min="0" required placeholder="Например: 120">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_available" name="is_available" 
+                                   {{ 'checked' if not room or room.is_available }} value="true">
+                            <label class="form-check-label" for="is_available">
+                                Номер доступен для бронирования
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ room.description if room else '' }}</textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="/rooms" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> {{ 'Обновить' if room else 'Создать' }} номер
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const select = document.getElementById("room_type_select");
+    const hidden = document.getElementById("room_type_value");
+    const customGroup = document.getElementById("customRoomTypeGroup");
+    const customInput = document.getElementById("room_type_custom");
+    const capacityInput = document.getElementById("capacity");
+    const priceInput = document.getElementById("price_per_night");
+    const form = document.getElementById("roomForm");
+
+    if (capacityInput && capacityInput.value) {
+        capacityInput.dataset.userModified = "true";
+    }
+    if (priceInput && priceInput.value) {
+        priceInput.dataset.userModified = "true";
+    }
+
+    function setAutoValue(input, value) {
+        if (!input || value === undefined || value === null || value === "") {
+            return;
+        }
+        if (!input.value || input.dataset.userModified === "auto") {
+            input.value = value;
+            input.dataset.userModified = "auto";
+        }
+    }
+
+    function handleTypeChange() {
+        const selectedOption = select.options[select.selectedIndex];
+        if (!selectedOption) {
+            hidden.value = "";
+            return;
+        }
+
+        if (selectedOption.value === "__custom__") {
+            customGroup.classList.remove("d-none");
+            hidden.value = customInput.value.trim();
+        } else {
+            customGroup.classList.add("d-none");
+            hidden.value = selectedOption.value;
+
+            const capacity = selectedOption.getAttribute("data-capacity");
+            const price = selectedOption.getAttribute("data-price");
+
+            setAutoValue(capacityInput, capacity);
+            setAutoValue(priceInput, price);
+        }
+    }
+
+    if (capacityInput) {
+        capacityInput.addEventListener("input", () => {
+            capacityInput.dataset.userModified = "true";
+        });
+    }
+
+    if (priceInput) {
+        priceInput.addEventListener("input", () => {
+            priceInput.dataset.userModified = "true";
+        });
+    }
+
+    if (select) {
+        select.addEventListener("change", () => {
+            if (capacityInput && !capacityInput.value) {
+                capacityInput.dataset.userModified = "auto";
+            }
+            if (priceInput && !priceInput.value) {
+                priceInput.dataset.userModified = "auto";
+            }
+            handleTypeChange();
+        });
+    }
+
+    if (customInput) {
+        customInput.addEventListener("input", () => {
+            hidden.value = customInput.value.trim();
+            customInput.classList.remove("is-invalid");
+        });
+    }
+
+    if (form) {
+        form.addEventListener("submit", (event) => {
+            const selectedOption = select ? select.options[select.selectedIndex] : null;
+            if (selectedOption && selectedOption.value === "__custom__") {
+                const customValue = customInput.value.trim();
+                if (!customValue) {
+                    event.preventDefault();
+                    customInput.classList.add("is-invalid");
+                    customInput.focus();
+                    return;
+                }
+                hidden.value = customValue;
+            }
+            if (!hidden.value) {
+                event.preventDefault();
+                if (customInput) {
+                    customInput.classList.add("is-invalid");
+                    customInput.focus();
+                }
+            }
+        });
+    }
+
+    handleTypeChange();
+});
+</script>
+{% endblock %}

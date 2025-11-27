@@ -1,0 +1,98 @@
+{% extends "base/layout.html" %}
+
+{% block title %}StayHub - система управления отелем{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white p-5 rounded">
+            <h1 class="display-4"><i class="bi bi-building"></i> Добро пожаловать в StayHub</h1>
+            <p class="lead">Система управления отелем и хостелом для автоматизации броней, гостей, номеров, услуг и платежей.</p>
+            <hr class="my-4 bg-white">
+            <p>Управляйте всеми операциями отеля эффективно с помощью единой платформы.</p>
+            <a class="btn btn-light btn-lg" href="/reports" role="button">
+                <i class="bi bi-bar-chart"></i> Перейти к панели
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-primary">
+            <div class="card-body text-center">
+                <i class="bi bi-door-open stat-icon text-primary"></i>
+                <h5 class="card-title mt-3">Номера</h5>
+                <p class="card-text">Управляйте номерами, устанавливайте цены и отслеживайте доступность.</p>
+                <a href="/rooms" class="btn btn-primary">Перейти к номерам</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-secondary">
+            <div class="card-body text-center">
+                <i class="bi bi-tags stat-icon text-secondary"></i>
+                <h5 class="card-title mt-3">Типы номеров</h5>
+                <p class="card-text">Создавайте собственные категории номеров и подставляйте рекомендации по цене и вместимости.</p>
+                <a href="/room-types" class="btn btn-outline-secondary">Настроить типы</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-success">
+            <div class="card-body text-center">
+                <i class="bi bi-people stat-icon text-success"></i>
+                <h5 class="card-title mt-3">Гости</h5>
+                <p class="card-text">Регистрируйте гостей и управляйте их данными и историей визитов.</p>
+                <a href="/guests" class="btn btn-success">Перейти к гостям</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-info">
+            <div class="card-body text-center">
+                <i class="bi bi-calendar-check stat-icon text-info"></i>
+                <h5 class="card-title mt-3">Бронирования</h5>
+                <p class="card-text">Создавайте и сопровождайте бронирования и заселения гостей.</p>
+                <a href="/bookings" class="btn btn-info text-white">Перейти к бронированиям</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-warning">
+            <div class="card-body text-center">
+                <i class="bi bi-gear stat-icon text-warning"></i>
+                <h5 class="card-title mt-3">Услуги</h5>
+                <p class="card-text">Настраивайте дополнительные услуги и стоимость.</p>
+                <a href="/services" class="btn btn-warning">Перейти к услугам</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-danger">
+            <div class="card-body text-center">
+                <i class="bi bi-credit-card stat-icon text-danger"></i>
+                <h5 class="card-title mt-3">Платежи</h5>
+                <p class="card-text">Проводите платежи и отслеживайте финансовые операции.</p>
+                <a href="/payments" class="btn btn-danger">Перейти к платежам</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-secondary">
+            <div class="card-body text-center">
+                <i class="bi bi-bar-chart stat-icon text-secondary"></i>
+                <h5 class="card-title mt-3">Отчёты</h5>
+                <p class="card-text">Просматривайте загрузку, доходы и статистику бронирований.</p>
+                <a href="/reports" class="btn btn-secondary">Перейти к отчётам</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

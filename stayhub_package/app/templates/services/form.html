@@ -1,0 +1,54 @@
+{% extends "base/layout.html" %}
+
+{% block title %}{{ 'Редактирование услуги' if service else 'Новая услуга' }} - StayHub{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-gear"></i> {{ 'Редактирование услуги' if service else 'Добавление услуги' }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ '/services/' ~ service.id ~ '/edit' if service else '/services/new' }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Название услуги *</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               value="{{ service.name if service else '' }}" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ service.description if service else '' }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Цена ($) *</label>
+                        <input type="number" class="form-control" id="price" name="price" 
+                               value="{{ service.price if service else '' }}" step="0.01" min="0" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" 
+                                   {{ 'checked' if not service or service.is_active }} value="true">
+                            <label class="form-check-label" for="is_active">
+                                Услуга активна
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="/services" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-check-circle"></i> {{ 'Обновить' if service else 'Создать' }} услугу
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

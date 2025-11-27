@@ -1,0 +1,57 @@
+{% extends "base/layout.html" %}
+
+{% if room_type and room_type.id %}
+    {% set page_title = "Редактирование типа №" ~ room_type.id %}
+    {% set submit_label = "Сохранить" %}
+{% else %}
+    {% set page_title = "Новый тип номера" %}
+    {% set submit_label = "Создать" %}
+{% endif %}
+
+{% block title %}{{ page_title }} - StayHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-tag"></i> {{ page_title }}</h2>
+    <a class="btn btn-secondary" href="/room-types"><i class="bi bi-arrow-left"></i> К списку типов</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+        <form method="post">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="code" class="form-label">Код *</label>
+                    <input type="text" class="form-control" id="code" name="code" value="{{ room_type.code if room_type else '' }}" placeholder="Например: DELUXE" {% if room_type and room_type.id %}readonly{% endif %} required>
+                    <div class="form-text">Используется как уникальный идентификатор, автоматически приводится к верхнему регистру и не изменяется после создания.</div>
+                </div>
+                <div class="col-md-8">
+                    <label for="name" class="form-label">Название *</label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ room_type.name if room_type else '' }}" required>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <label for="default_capacity" class="form-label">Рекомендуемая вместимость</label>
+                    <input type="number" min="1" class="form-control" id="default_capacity" name="default_capacity" value="{{ room_type.default_capacity if room_type and room_type.default_capacity is not none else '' }}" placeholder="Например: 2">
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <label for="default_price" class="form-label">Базовая цена (USD)</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="default_price" name="default_price" value="{{ room_type.default_price if room_type and room_type.default_price is not none else '' }}" placeholder="Например: 120">
+                </div>
+                <div class="col-12">
+                    <label for="description" class="form-label">Описание</label>
+                    <textarea class="form-control" id="description" name="description" rows="3" placeholder="Ключевые особенности и преимущества">{{ room_type.description if room_type else '' }}</textarea>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a class="btn btn-outline-secondary" href="/room-types">Отмена</a>
+                <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

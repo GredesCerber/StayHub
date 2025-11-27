@@ -10,7 +10,6 @@ from app.models.service import Service
 from app.models.booking import Booking
 from app.models.booking_service import BookingService
 from app.models.payment import Payment
-from app.models.room_type import RoomType
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -20,50 +19,33 @@ def seed_database():
     db = SessionLocal()
     
     try:
-        # Seed room types first
-        if not db.query(RoomType).first():
-            room_types = [
-                RoomType(code="SGL", name="Одноместный стандарт", description="Компактный номер для индивидуальных путешественников", default_capacity=1, default_price=55.0),
-                RoomType(code="DBL", name="Двухместный комфорт", description="Уютный номер для пары или друзей", default_capacity=2, default_price=90.0),
-                RoomType(code="FAM", name="Семейный", description="Дополнительное спальное место для ребёнка", default_capacity=3, default_price=115.0),
-                RoomType(code="LUX", name="Люкс премиум", description="Отдельная гостиная зона и панорамные окна", default_capacity=4, default_price=185.0),
-                RoomType(code="PENT", name="Пентхаус Signature", description="Большое пространство, приватная терраса и личная сауна", default_capacity=6, default_price=260.0),
-            ]
-            db.add_all(room_types)
-            db.commit()
-            print("Справочник типов номеров успешно создан.")
-        else:
-            print("Типы номеров уже присутствуют. Пропускаем заполнение справочника.")
-
         # Check if data already exists
         if db.query(Room).first():
             print("База уже заполнена. Пропускаем...")
             return
-
-        type_lookup = {t.code: t.name for t in db.query(RoomType).all()}
-
+        
         # Seed Rooms
         rooms = [
-            Room(room_number="101", room_type=type_lookup.get("SGL", "Одноместный стандарт"), capacity=1, price_per_night=55.0, is_available=True, description="Уютный одноместный номер с видом на город"),
-            Room(room_number="102", room_type=type_lookup.get("SGL", "Одноместный стандарт"), capacity=1, price_per_night=55.0, is_available=True, description="Одноместный номер с видом на сад"),
-            Room(room_number="103", room_type=type_lookup.get("SGL", "Одноместный стандарт"), capacity=1, price_per_night=58.0, is_available=True, description="Одноместный номер с рабочим столом"),
-            Room(room_number="104", room_type=type_lookup.get("SGL", "Одноместный стандарт"), capacity=1, price_per_night=62.0, is_available=True, description="Одноместный номер в стиле казахского модерна с видом на Байтерек"),
-            Room(room_number="201", room_type=type_lookup.get("DBL", "Двухместный комфорт"), capacity=2, price_per_night=88.0, is_available=True, description="Просторный двухместный номер с балконом"),
-            Room(room_number="202", room_type=type_lookup.get("DBL", "Двухместный комфорт"), capacity=2, price_per_night=90.0, is_available=True, description="Двухместный номер с кроватью king-size"),
-            Room(room_number="203", room_type=type_lookup.get("DBL", "Двухместный комфорт"), capacity=2, price_per_night=92.0, is_available=True, description="Двухместный номер с диваном"),
-            Room(room_number="204", room_type=type_lookup.get("DBL", "Двухместный комфорт"), capacity=2, price_per_night=99.0, is_available=True, description="Двухместный номер с панорамой на реку Есиль и Expo"),
-            Room(room_number="205", room_type=type_lookup.get("DBL", "Двухместный комфорт"), capacity=2, price_per_night=95.0, is_available=True, description="Степной интерьер с орнаментами из Кызылорды"),
-            Room(room_number="206", room_type=type_lookup.get("FAM", "Семейный"), capacity=3, price_per_night=110.0, is_available=True, description="Семейный номер с уголком казахских ремёсел"),
-            Room(room_number="207", room_type=type_lookup.get("DBL", "Двухместный комфорт"), capacity=2, price_per_night=98.0, is_available=False, description="Номер, зарезервированный для делегации из Атырау"),
-            Room(room_number="301", room_type=type_lookup.get("LUX", "Люкс премиум"), capacity=4, price_per_night=180.0, is_available=True, description="Люксовый номер с гостиной зоной"),
-            Room(room_number="302", room_type=type_lookup.get("LUX", "Люкс премиум"), capacity=4, price_per_night=190.0, is_available=True, description="Президентский люкс с панорамным видом"),
-            Room(room_number="303", room_type=type_lookup.get("LUX", "Люкс премиум"), capacity=4, price_per_night=195.0, is_available=True, description="Люкс 'Национальный колорит' с домброй и чайным столом"),
-            Room(room_number="304", room_type=type_lookup.get("LUX", "Люкс премиум"), capacity=4, price_per_night=200.0, is_available=True, description="Люкс 'Шымбулак' с мини-камином и зимним садом"),
-            Room(room_number="305", room_type=type_lookup.get("LUX", "Люкс премиум"), capacity=5, price_per_night=215.0, is_available=False, description="Люкс 'Визит Президента' с переговорной зоной"),
-            Room(room_number="401", room_type=type_lookup.get("LUX", "Люкс премиум"), capacity=4, price_per_night=220.0, is_available=True, description="Панорамный люкс с видом на Хан Шатыр"),
-            Room(room_number="402", room_type=type_lookup.get("LUX", "Люкс премиум"), capacity=4, price_per_night=230.0, is_available=True, description="Премиальный люкс с коллекцией чаёв из Жаркента"),
-            Room(room_number="403", room_type=type_lookup.get("LUX", "Люкс премиум"), capacity=6, price_per_night=255.0, is_available=False, description="Sky-люкс с приватной террасой над рекой Есиль"),
-            Room(room_number="501", room_type=type_lookup.get("PENT", "Пентхаус Signature"), capacity=6, price_per_night=270.0, is_available=True, description="Пентхаус 'Алтын адам' с частной сауной"),
+            Room(room_number="101", room_type="single", capacity=1, price_per_night=50.0, is_available=True, description="Уютный одноместный номер с видом на город"),
+            Room(room_number="102", room_type="single", capacity=1, price_per_night=50.0, is_available=True, description="Одноместный номер с видом на сад"),
+            Room(room_number="201", room_type="double", capacity=2, price_per_night=80.0, is_available=True, description="Просторный двухместный номер с балконом"),
+            Room(room_number="202", room_type="double", capacity=2, price_per_night=80.0, is_available=True, description="Двухместный номер с кроватью king-size"),
+            Room(room_number="301", room_type="suite", capacity=4, price_per_night=150.0, is_available=True, description="Люксовый номер с гостиной зоной"),
+            Room(room_number="302", room_type="suite", capacity=4, price_per_night=150.0, is_available=True, description="Президентский люкс с панорамным видом"),
+            Room(room_number="103", room_type="single", capacity=1, price_per_night=55.0, is_available=True, description="Одноместный номер с рабочим столом"),
+            Room(room_number="203", room_type="double", capacity=2, price_per_night=85.0, is_available=True, description="Двухместный номер с диваном"),
+            Room(room_number="104", room_type="single", capacity=1, price_per_night=58.0, is_available=True, description="Одноместный номер в стиле казахского модерна с видом на Байтерек"),
+            Room(room_number="204", room_type="double", capacity=2, price_per_night=95.0, is_available=True, description="Двухместный номер с панорамой на реку Есиль и Expo"),
+            Room(room_number="205", room_type="double", capacity=2, price_per_night=92.0, is_available=True, description="Степной интерьер с орнаментами из Кызылорды"),
+            Room(room_number="206", room_type="double", capacity=3, price_per_night=105.0, is_available=True, description="Семейный номер с уголком казахских ремёсел"),
+            Room(room_number="207", room_type="double", capacity=2, price_per_night=88.0, is_available=False, description="Номер, зарезервированный для делегации из Атырау"),
+            Room(room_number="303", room_type="suite", capacity=4, price_per_night=170.0, is_available=True, description="Люкс 'Национальный колорит' с домброй и чайным столом"),
+            Room(room_number="304", room_type="suite", capacity=4, price_per_night=175.0, is_available=True, description="Люкс 'Шымбулак' с мини-камином и зимним садом"),
+            Room(room_number="305", room_type="suite", capacity=5, price_per_night=190.0, is_available=False, description="Люкс 'Визит Президента' с переговорной зоной"),
+            Room(room_number="401", room_type="suite", capacity=4, price_per_night=210.0, is_available=True, description="Панорамный люкс с видом на Хан Шатыр"),
+            Room(room_number="402", room_type="suite", capacity=4, price_per_night=220.0, is_available=True, description="Премиальный люкс с коллекцией чаёв из Жаркента"),
+            Room(room_number="403", room_type="suite", capacity=6, price_per_night=250.0, is_available=False, description="Sky-люкс с приватной террасой над рекой Есиль"),
+            Room(room_number="501", room_type="suite", capacity=6, price_per_night=260.0, is_available=True, description="Пентхаус 'Алтын адам' с частной сауной"),
         ]
         db.add_all(rooms)
         db.commit()
