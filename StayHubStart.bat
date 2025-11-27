@@ -16,12 +16,25 @@ if not exist "%CORE_LAUNCHER%" (
 rem Скрываем служебную папку для красоты (игнорируем ошибки, если права не позволяют).
 attrib +h "%PACKAGE_DIR%" > nul 2>&1
 
-if "%~1"=="" (
-    echo Запуск StayHub Launcher в новом окне...
-    start "StayHub" cmd /k call "%CORE_LAUNCHER%"
-) else (
-    call "%CORE_LAUNCHER%" %*
+if /I "%~1"=="--new-window" (
+    shift
+    echo Запуск StayHub Launcher в отдельном окне...
+    start "StayHub" "%COMSPEC%" /k call "%CORE_LAUNCHER%" %*
+    goto :end
 )
 
+if "%~1"=="" (
+    echo Запуск StayHub Launcher...
+    call "%CORE_LAUNCHER%"
+    if errorlevel 1 (
+        echo Во время запуска произошла ошибка. Нажмите любую клавишу, чтобы закрыть окно.
+        pause > nul
+    )
+    goto :end
+)
+
+call "%CORE_LAUNCHER%" %*
+
+:end
 endlocal
 exit /b 0
