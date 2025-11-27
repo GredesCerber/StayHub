@@ -1,0 +1,87 @@
+{% extends "base/layout.html" %}
+
+{% block title %}StayHub - Hotel Management System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="jumbotron bg-primary text-white p-5 rounded">
+            <h1 class="display-4"><i class="bi bi-building"></i> Welcome to StayHub</h1>
+            <p class="lead">Hotel/Hostel management system for automating booking, guests, rooms, services and payments.</p>
+            <hr class="my-4 bg-white">
+            <p>Manage your hotel operations efficiently with our comprehensive management system.</p>
+            <a class="btn btn-light btn-lg" href="/reports" role="button">
+                <i class="bi bi-bar-chart"></i> View Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-primary">
+            <div class="card-body text-center">
+                <i class="bi bi-door-open stat-icon text-primary"></i>
+                <h5 class="card-title mt-3">Rooms</h5>
+                <p class="card-text">Manage hotel rooms, set prices, and track availability.</p>
+                <a href="/rooms" class="btn btn-primary">Manage Rooms</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-success">
+            <div class="card-body text-center">
+                <i class="bi bi-people stat-icon text-success"></i>
+                <h5 class="card-title mt-3">Guests</h5>
+                <p class="card-text">Register and manage guest information and history.</p>
+                <a href="/guests" class="btn btn-success">Manage Guests</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-info">
+            <div class="card-body text-center">
+                <i class="bi bi-calendar-check stat-icon text-info"></i>
+                <h5 class="card-title mt-3">Bookings</h5>
+                <p class="card-text">Create and manage room reservations and check-ins.</p>
+                <a href="/bookings" class="btn btn-info text-white">Manage Bookings</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-warning">
+            <div class="card-body text-center">
+                <i class="bi bi-gear stat-icon text-warning"></i>
+                <h5 class="card-title mt-3">Services</h5>
+                <p class="card-text">Configure additional hotel services and pricing.</p>
+                <a href="/services" class="btn btn-warning">Manage Services</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-danger">
+            <div class="card-body text-center">
+                <i class="bi bi-credit-card stat-icon text-danger"></i>
+                <h5 class="card-title mt-3">Payments</h5>
+                <p class="card-text">Process payments and track financial transactions.</p>
+                <a href="/payments" class="btn btn-danger">Manage Payments</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card dashboard-card h-100 border-secondary">
+            <div class="card-body text-center">
+                <i class="bi bi-bar-chart stat-icon text-secondary"></i>
+                <h5 class="card-title mt-3">Reports</h5>
+                <p class="card-text">View occupancy, revenue, and booking reports.</p>
+                <a href="/reports" class="btn btn-secondary">View Reports</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Bookings Report - StayHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-calendar3"></i> Bookings Report</h2>
+    <a href="/reports" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <h2 class="text-warning">{{ pending }}</h2>
+                <p class="mb-0">Pending</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h2 class="text-success">{{ confirmed }}</h2>
+                <p class="mb-0">Confirmed</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-secondary">
+            <div class="card-body text-center">
+                <h2 class="text-secondary">{{ completed }}</h2>
+                <p class="mb-0">Completed</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <h2 class="text-danger">{{ cancelled }}</h2>
+                <p class="mb-0">Cancelled</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3>{{ total_bookings }}</h3>
+                <p class="mb-0">Total Bookings</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Upcoming Bookings</h5>
+    </div>
+    <div class="card-body">
+        {% if upcoming_bookings %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Booking ID</th>
+                        <th>Guest</th>
+                        <th>Room</th>
+                        <th>Check-in</th>
+                        <th>Check-out</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in upcoming_bookings %}
+                    <tr>
+                        <td><strong>#{{ booking.id }}</strong></td>
+                        <td>{{ booking.guest.first_name }} {{ booking.guest.last_name }}</td>
+                        <td>Room {{ booking.room.room_number }}</td>
+                        <td>{{ booking.check_in_date }}</td>
+                        <td>{{ booking.check_out_date }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if booking.status == 'confirmed' else 'warning text-dark' }}">
+                                {{ booking.status|capitalize }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center">No upcoming bookings.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

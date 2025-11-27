@@ -1,0 +1,66 @@
+{% extends "base/layout.html" %}
+
+{% block title %}{{ 'Edit Guest' if guest else 'New Guest' }} - StayHub{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-person"></i> {{ 'Edit Guest' if guest else 'Add New Guest' }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ '/guests/' ~ guest.id ~ '/edit' if guest else '/guests/new' }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="first_name" class="form-label">First Name *</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" 
+                                   value="{{ guest.first_name if guest else '' }}" required>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="last_name" class="form-label">Last Name *</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" 
+                                   value="{{ guest.last_name if guest else '' }}" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="email" name="email" 
+                               value="{{ guest.email if guest else '' }}" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" 
+                                   value="{{ guest.phone if guest else '' }}">
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_document" class="form-label">ID Document</label>
+                            <input type="text" class="form-control" id="id_document" name="id_document" 
+                                   value="{{ guest.id_document if guest else '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="2">{{ guest.address if guest else '' }}</textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="/guests" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> {{ 'Update' if guest else 'Create' }} Guest
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Occupancy Report - StayHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-building"></i> Room Occupancy Report</h2>
+    <a href="/reports" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h2>{{ total_rooms }}</h2>
+                <p class="mb-0">Total Rooms</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h2>{{ occupied_count }}</h2>
+                <p class="mb-0">Occupied</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h2>{{ "%.1f"|format(occupancy_rate) }}%</h2>
+                <p class="mb-0">Occupancy Rate</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Room Status Details</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Room</th>
+                        <th>Type</th>
+                        <th>Capacity</th>
+                        <th>Price/Night</th>
+                        <th>Status</th>
+                        <th>Current Guest</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rs in room_status %}
+                    <tr>
+                        <td><strong>{{ rs.room.room_number }}</strong></td>
+                        <td>{{ rs.room.room_type|capitalize }}</td>
+                        <td>{{ rs.room.capacity }}</td>
+                        <td>${{ "%.2f"|format(rs.room.price_per_night) }}</td>
+                        <td>
+                            {% if rs.is_occupied %}
+                            <span class="badge bg-danger">Occupied</span>
+                            {% else %}
+                            <span class="badge bg-success">Available</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if rs.current_booking %}
+                            {{ rs.current_booking.guest.first_name }} {{ rs.current_booking.guest.last_name }}
+                            <br><small class="text-muted">Until {{ rs.current_booking.check_out_date }}</small>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

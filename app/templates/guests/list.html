@@ -1,0 +1,54 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Guests - StayHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-people"></i> Guests</h2>
+    <a href="/guests/new" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Add Guest
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Address</th>
+                        <th>ID Document</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for guest in guests %}
+                    <tr>
+                        <td><strong>{{ guest.first_name }} {{ guest.last_name }}</strong></td>
+                        <td>{{ guest.email }}</td>
+                        <td>{{ guest.phone or '-' }}</td>
+                        <td>{{ guest.address or '-' }}</td>
+                        <td>{{ guest.id_document or '-' }}</td>
+                        <td>
+                            <a href="/guests/{{ guest.id }}/edit" class="btn btn-sm btn-outline-primary btn-action">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="/guests/{{ guest.id }}/delete" class="btn btn-sm btn-outline-danger btn-action" onclick="return confirm('Are you sure you want to delete this guest?')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No guests found. <a href="/guests/new">Add a guest</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

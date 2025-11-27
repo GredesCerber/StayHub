@@ -1,0 +1,114 @@
+{% extends "base/layout.html" %}
+
+{% block title %}Booking Services - StayHub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> Booking Details</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Booking ID:</strong> #{{ booking.id }}</p>
+                <p><strong>Guest:</strong> {{ booking.guest.first_name }} {{ booking.guest.last_name }}</p>
+                <p><strong>Room:</strong> {{ booking.room.room_number }} ({{ booking.room.room_type|capitalize }})</p>
+                <p><strong>Check-in:</strong> {{ booking.check_in_date }}</p>
+                <p><strong>Check-out:</strong> {{ booking.check_out_date }}</p>
+                <p><strong>Status:</strong> 
+                    <span class="badge bg-{{ 'success' if booking.status == 'confirmed' else 'warning' if booking.status == 'pending' else 'secondary' }}">
+                        {{ booking.status|capitalize }}
+                    </span>
+                </p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-plus-circle"></i> Add Service</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/booking-services/booking/{{ booking.id }}/add">
+                    <div class="mb-3">
+                        <label for="service_id" class="form-label">Service *</label>
+                        <select class="form-select" id="service_id" name="service_id" required>
+                            <option value="">Select Service</option>
+                            {% for service in services %}
+                            <option value="{{ service.id }}">
+                                {{ service.name }} - ${{ "%.2f"|format(service.price) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="quantity" class="form-label">Quantity *</label>
+                        <input type="number" class="form-control" id="quantity" name="quantity" value="1" min="1" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-circle"></i> Add Service
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-list-check"></i> Added Services</h5>
+            </div>
+            <div class="card-body">
+                {% if booking_services %}
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Qty</th>
+                            <th>Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set total = namespace(value=0) %}
+                        {% for bs in booking_services %}
+                        {% set total.value = total.value + (bs.subtotal or 0) %}
+                        <tr>
+                            <td>{{ bs.service.name }}</td>
+                            <td>{{ bs.quantity }}</td>
+                            <td>${{ "%.2f"|format(bs.subtotal or 0) }}</td>
+                            <td>
+                                <a href="/booking-services/{{ bs.id }}/delete" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this service?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light">
+                            <td colspan="2"><strong>Services Total:</strong></td>
+                            <td colspan="2"><strong>${{ "%.2f"|format(total.value) }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                {% else %}
+                <p class="text-muted text-center">No services added yet.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="mt-3">
+            <a href="/bookings" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Bookings
+            </a>
+            <form action="/bookings/{{ booking.id }}/recalculate" method="POST" class="d-inline">
+                <button type="submit" class="btn btn-info text-white">
+                    <i class="bi bi-calculator"></i> Recalculate Total
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
