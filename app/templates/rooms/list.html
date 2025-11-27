@@ -10,11 +10,51 @@
     </a>
 </div>
 
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-funnel"></i> Filters
+    </div>
+    <div class="card-body">
+        <form method="get" action="/rooms" class="row g-3">
+            <div class="col-md-4">
+                <label for="room_type" class="form-label">Room Type</label>
+                <select name="room_type" id="room_type" class="form-select">
+                    <option value="">All Types</option>
+                    <option value="single" {{ 'selected' if filter_room_type == 'single' else '' }}>Single</option>
+                    <option value="double" {{ 'selected' if filter_room_type == 'double' else '' }}>Double</option>
+                    <option value="suite" {{ 'selected' if filter_room_type == 'suite' else '' }}>Suite</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="is_available" class="form-label">Availability</label>
+                <select name="is_available" id="is_available" class="form-select">
+                    <option value="">All</option>
+                    <option value="true" {{ 'selected' if filter_is_available == 'true' else '' }}>Available</option>
+                    <option value="false" {{ 'selected' if filter_is_available == 'false' else '' }}>Occupied</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+                <a href="/rooms" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Clear
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list"></i> Room List</span>
+        <span class="badge bg-info">{{ rooms|length }} rooms</span>
+    </div>
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-striped table-hover">
-                <thead>
+                <thead class="table-dark">
                     <tr>
                         <th>Room Number</th>
                         <th>Type</th>
@@ -34,28 +74,33 @@
                                 {{ room.room_type|capitalize }}
                             </span>
                         </td>
-                        <td>{{ room.capacity }}</td>
-                        <td>${{ "%.2f"|format(room.price_per_night) }}</td>
+                        <td><i class="bi bi-people"></i> {{ room.capacity }}</td>
+                        <td class="text-success fw-bold">${{ "%.2f"|format(room.price_per_night) }}</td>
                         <td>
                             {% if room.is_available %}
-                            <span class="badge bg-success">Available</span>
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Available</span>
                             {% else %}
-                            <span class="badge bg-danger">Occupied</span>
+                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Occupied</span>
                             {% endif %}
                         </td>
                         <td>{{ room.description or '-' }}</td>
                         <td>
-                            <a href="/rooms/{{ room.id }}/edit" class="btn btn-sm btn-outline-primary btn-action">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <a href="/rooms/{{ room.id }}/delete" class="btn btn-sm btn-outline-danger btn-action" onclick="return confirm('Are you sure you want to delete this room?')">
-                                <i class="bi bi-trash"></i>
-                            </a>
+                            <div class="btn-group" role="group">
+                                <a href="/rooms/{{ room.id }}/edit" class="btn btn-sm btn-outline-primary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="/rooms/{{ room.id }}/delete" class="btn btn-sm btn-outline-danger" title="Delete" onclick="return confirm('Are you sure you want to delete room {{ room.room_number }}?')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted">No rooms found. <a href="/rooms/new">Add a room</a></td>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                            No rooms found. <a href="/rooms/new">Add a room</a>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

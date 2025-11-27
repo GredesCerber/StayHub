@@ -1,192 +1,205 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Query
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from datetime import date, timedelta
+from typing import Optional
 
-from app.database import get_db
-from app.models.booking import Booking
-from app.models.room import Room
-from app.models.guest import Guest
-from app.models.service import Service
-from app.models.payment import Payment
-from app.models.booking_service import BookingService
+from app.core.dependencies import get_db
+from app.services.report_service import ReportService
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 templates = Jinja2Templates(directory="app/templates")
 
 
+def get_report_service(db: Session = Depends(get_db)) -> ReportService:
+    """Dependency for ReportService."""
+    return ReportService(db)
+
+
 @router.get("/", response_class=HTMLResponse)
-def reports_dashboard(request: Request, db: Session = Depends(get_db)):
+def reports_dashboard(
+    request: Request, 
+    service: ReportService = Depends(get_report_service)
+):
     """Main reports dashboard."""
-    # Summary statistics
-    total_rooms = db.query(Room).count()
-    available_rooms = db.query(Room).filter(Room.is_available == True).count()
-    total_guests = db.query(Guest).count()
-    total_bookings = db.query(Booking).count()
-    active_bookings = db.query(Booking).filter(Booking.status.in_(["pending", "confirmed"])).count()
-    
-    # Revenue statistics
-    total_revenue = db.query(func.sum(Payment.amount)).filter(Payment.status == "completed").scalar() or 0
-    
-    # Today's check-ins and check-outs
-    today = date.today()
-    todays_checkins = db.query(Booking).filter(Booking.check_in_date == today).count()
-    todays_checkouts = db.query(Booking).filter(Booking.check_out_date == today).count()
+    stats = service.get_dashboard_stats()
     
     return templates.TemplateResponse("reports/dashboard.html", {
         "request": request,
-        "total_rooms": total_rooms,
-        "available_rooms": available_rooms,
-        "total_guests": total_guests,
-        "total_bookings": total_bookings,
-        "active_bookings": active_bookings,
-        "total_revenue": total_revenue,
-        "todays_checkins": todays_checkins,
-        "todays_checkouts": todays_checkouts
+        "total_rooms": stats.total_rooms,
+        "available_rooms": stats.available_rooms,
+        "total_guests": stats.total_guests,
+        "total_bookings": stats.total_bookings,
+        "active_bookings": stats.active_bookings,
+        "total_revenue": stats.total_revenue,
+        "todays_checkins": stats.todays_checkins,
+        "todays_checkouts": stats.todays_checkouts,
+        "pending_payments": stats.pending_payments
     })
 
 
 @router.get("/occupancy", response_class=HTMLResponse)
-def occupancy_report(request: Request, db: Session = Depends(get_db)):
+def occupancy_report(
+    request: Request,
+    target_date: Optional[date] = None,
+    service: ReportService = Depends(get_report_service)
+):
     """Room occupancy report."""
-    rooms = db.query(Room).all()
-    today = date.today()
-    
-    room_status = []
-    for room in rooms:
-        # Check if room has active booking
-        active_booking = db.query(Booking).filter(
-            Booking.room_id == room.id,
-            Booking.check_in_date <= today,
-            Booking.check_out_date > today,
-            Booking.status.in_(["pending", "confirmed"])
-        ).first()
-        
-        room_status.append({
-            "room": room,
-            "is_occupied": active_booking is not None,
-            "current_booking": active_booking
-        })
-    
-    occupied_count = sum(1 for rs in room_status if rs["is_occupied"])
-    occupancy_rate = (occupied_count / len(rooms) * 100) if rooms else 0
+    report = service.get_occupancy_report(target_date)
     
     return templates.TemplateResponse("reports/occupancy.html", {
         "request": request,
-        "room_status": room_status,
-        "occupancy_rate": occupancy_rate,
-        "occupied_count": occupied_count,
-        "total_rooms": len(rooms)
+        "room_status": report.room_details,
+        "occupancy_rate": report.occupancy_rate,
+        "occupied_count": report.occupied_rooms,
+        "total_rooms": report.total_rooms,
+        "target_date": target_date or date.today()
     })
 
 
 @router.get("/revenue", response_class=HTMLResponse)
-def revenue_report(request: Request, db: Session = Depends(get_db)):
+def revenue_report(
+    request: Request,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    service: ReportService = Depends(get_report_service)
+):
     """Revenue report."""
-    # Get all completed payments
-    payments = db.query(Payment).filter(Payment.status == "completed").all()
-    
-    total_revenue = sum(p.amount for p in payments)
-    
-    # Group by payment method
-    revenue_by_method = {}
-    for payment in payments:
-        method = payment.payment_method
-        if method not in revenue_by_method:
-            revenue_by_method[method] = 0
-        revenue_by_method[method] += payment.amount
-    
-    # Recent payments
-    recent_payments = db.query(Payment).order_by(Payment.payment_date.desc()).limit(10).all()
+    report = service.get_revenue_report(start_date, end_date)
     
     return templates.TemplateResponse("reports/revenue.html", {
         "request": request,
-        "total_revenue": total_revenue,
-        "revenue_by_method": revenue_by_method,
-        "recent_payments": recent_payments,
-        "payment_count": len(payments)
+        "total_revenue": report.total_revenue,
+        "revenue_by_method": report.revenue_by_method,
+        "recent_payments": report.recent_payments,
+        "payment_count": report.payment_count,
+        "monthly_revenue": report.monthly_revenue,
+        "start_date": start_date,
+        "end_date": end_date
     })
 
 
 @router.get("/bookings", response_class=HTMLResponse)
-def bookings_report(request: Request, db: Session = Depends(get_db)):
+def bookings_report(
+    request: Request,
+    service: ReportService = Depends(get_report_service)
+):
     """Bookings report."""
-    # Booking status breakdown
-    pending = db.query(Booking).filter(Booking.status == "pending").count()
-    confirmed = db.query(Booking).filter(Booking.status == "confirmed").count()
-    cancelled = db.query(Booking).filter(Booking.status == "cancelled").count()
-    completed = db.query(Booking).filter(Booking.status == "completed").count()
-    
-    # Upcoming bookings
-    today = date.today()
-    upcoming_bookings = db.query(Booking).filter(
-        Booking.check_in_date >= today,
-        Booking.status.in_(["pending", "confirmed"])
-    ).order_by(Booking.check_in_date).limit(10).all()
+    stats = service.get_booking_statistics()
     
     return templates.TemplateResponse("reports/bookings.html", {
         "request": request,
-        "pending": pending,
-        "confirmed": confirmed,
-        "cancelled": cancelled,
-        "completed": completed,
-        "upcoming_bookings": upcoming_bookings,
-        "total_bookings": pending + confirmed + cancelled + completed
+        "pending": stats["pending"],
+        "confirmed": stats["confirmed"],
+        "cancelled": stats["cancelled"],
+        "completed": stats["completed"],
+        "upcoming_bookings": stats["upcoming"],
+        "total_bookings": stats["total"],
+        "todays_checkins": stats["todays_checkins"],
+        "todays_checkouts": stats["todays_checkouts"]
+    })
+
+
+@router.get("/services", response_class=HTMLResponse)
+def services_report(
+    request: Request,
+    service: ReportService = Depends(get_report_service)
+):
+    """Service usage report."""
+    report = service.get_service_usage_report()
+    
+    return templates.TemplateResponse("reports/services.html", {
+        "request": request,
+        "most_used_services": report.most_used_services,
+        "total_service_revenue": report.total_service_revenue
     })
 
 
 # API endpoints for reports
 @router.get("/api/summary")
-def get_summary_report(db: Session = Depends(get_db)):
+def get_summary_report(service: ReportService = Depends(get_report_service)):
     """Get summary report data as JSON."""
-    total_rooms = db.query(Room).count()
-    available_rooms = db.query(Room).filter(Room.is_available == True).count()
-    total_guests = db.query(Guest).count()
-    total_bookings = db.query(Booking).count()
-    active_bookings = db.query(Booking).filter(Booking.status.in_(["pending", "confirmed"])).count()
-    total_revenue = db.query(func.sum(Payment.amount)).filter(Payment.status == "completed").scalar() or 0
-    
-    today = date.today()
-    todays_checkins = db.query(Booking).filter(Booking.check_in_date == today).count()
-    todays_checkouts = db.query(Booking).filter(Booking.check_out_date == today).count()
-    
+    stats = service.get_dashboard_stats()
     return {
-        "total_rooms": total_rooms,
-        "available_rooms": available_rooms,
-        "total_guests": total_guests,
-        "total_bookings": total_bookings,
-        "active_bookings": active_bookings,
-        "total_revenue": total_revenue,
-        "todays_checkins": todays_checkins,
-        "todays_checkouts": todays_checkouts
+        "total_rooms": stats.total_rooms,
+        "available_rooms": stats.available_rooms,
+        "total_guests": stats.total_guests,
+        "total_bookings": stats.total_bookings,
+        "active_bookings": stats.active_bookings,
+        "total_revenue": stats.total_revenue,
+        "todays_checkins": stats.todays_checkins,
+        "todays_checkouts": stats.todays_checkouts,
+        "pending_payments": stats.pending_payments
     }
 
 
 @router.get("/api/occupancy")
-def get_occupancy_report(db: Session = Depends(get_db)):
+def get_occupancy_report(
+    target_date: Optional[date] = None,
+    service: ReportService = Depends(get_report_service)
+):
     """Get occupancy report data as JSON."""
-    rooms = db.query(Room).all()
-    today = date.today()
-    
-    occupied_count = 0
-    for room in rooms:
-        active_booking = db.query(Booking).filter(
-            Booking.room_id == room.id,
-            Booking.check_in_date <= today,
-            Booking.check_out_date > today,
-            Booking.status.in_(["pending", "confirmed"])
-        ).first()
-        if active_booking:
-            occupied_count += 1
-    
-    total_rooms = len(rooms)
-    occupancy_rate = (occupied_count / total_rooms * 100) if total_rooms > 0 else 0
-    
+    report = service.get_occupancy_report(target_date)
     return {
-        "total_rooms": total_rooms,
-        "occupied_rooms": occupied_count,
-        "available_rooms": total_rooms - occupied_count,
-        "occupancy_rate": round(occupancy_rate, 2)
+        "total_rooms": report.total_rooms,
+        "occupied_rooms": report.occupied_rooms,
+        "available_rooms": report.available_rooms,
+        "occupancy_rate": report.occupancy_rate
+    }
+
+
+@router.get("/api/occupancy/range")
+def get_occupancy_range(
+    start_date: date,
+    end_date: date,
+    service: ReportService = Depends(get_report_service)
+):
+    """Get occupancy data for a date range."""
+    return service.get_occupancy_by_date_range(start_date, end_date)
+
+
+@router.get("/api/revenue")
+def get_revenue_report(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    service: ReportService = Depends(get_report_service)
+):
+    """Get revenue report data as JSON."""
+    report = service.get_revenue_report(start_date, end_date)
+    return {
+        "total_revenue": report.total_revenue,
+        "revenue_by_method": report.revenue_by_method,
+        "payment_count": report.payment_count,
+        "monthly_revenue": report.monthly_revenue
+    }
+
+
+@router.get("/api/services")
+def get_service_usage(service: ReportService = Depends(get_report_service)):
+    """Get service usage data as JSON."""
+    report = service.get_service_usage_report()
+    return {
+        "most_used_services": [
+            {
+                "name": s["service"].name,
+                "usage_count": s["usage_count"],
+                "total_revenue": s["total_revenue"]
+            }
+            for s in report.most_used_services
+        ],
+        "total_service_revenue": report.total_service_revenue
+    }
+
+
+@router.get("/api/bookings")
+def get_booking_stats(service: ReportService = Depends(get_report_service)):
+    """Get booking statistics as JSON."""
+    stats = service.get_booking_statistics()
+    return {
+        "total": stats["total"],
+        "pending": stats["pending"],
+        "confirmed": stats["confirmed"],
+        "cancelled": stats["cancelled"],
+        "completed": stats["completed"]
     }

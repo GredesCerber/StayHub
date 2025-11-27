@@ -1,90 +1,128 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, Form, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.database import get_db
+from app.core.dependencies import get_db
+from app.repositories.booking_service_repository import BookingServiceRepository
+from app.services.booking_service import BookingService as BookingServiceClass
+from app.services.service_service import ServiceService
 from app.models.booking_service import BookingService
-from app.models.booking import Booking
-from app.models.service import Service
 from app.schemas.booking_service import BookingServiceCreate, BookingServiceUpdate, BookingService as BookingServiceSchema
 
 router = APIRouter(prefix="/booking-services", tags=["booking-services"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-def calculate_subtotal(db: Session, service_id: int, quantity: int) -> float:
-    """Calculate subtotal for a booking service."""
-    service = db.query(Service).filter(Service.id == service_id).first()
-    if service:
-        return service.price * quantity
-    return 0.0
+def get_booking_service_repo(db: Session = Depends(get_db)) -> BookingServiceRepository:
+    """Dependency for BookingServiceRepository."""
+    return BookingServiceRepository(db)
+
+
+def get_booking_service(db: Session = Depends(get_db)) -> BookingServiceClass:
+    """Dependency for BookingService."""
+    return BookingServiceClass(db)
+
+
+def get_service_service(db: Session = Depends(get_db)) -> ServiceService:
+    """Dependency for ServiceService."""
+    return ServiceService(db)
 
 
 # API Routes
 @router.get("/api", response_model=List[BookingServiceSchema])
-def get_booking_services(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    booking_services = db.query(BookingService).offset(skip).limit(limit).all()
-    return booking_services
+def get_booking_services(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    booking_id: int = None,
+    repo: BookingServiceRepository = Depends(get_booking_service_repo)
+):
+    """Get all booking services with optional filtering."""
+    if booking_id:
+        return repo.get_by_booking(booking_id)
+    return repo.get_all(skip, limit)
 
 
 @router.get("/api/{booking_service_id}", response_model=BookingServiceSchema)
-def get_booking_service(booking_service_id: int, db: Session = Depends(get_db)):
-    booking_service = db.query(BookingService).filter(BookingService.id == booking_service_id).first()
-    if booking_service is None:
+def get_booking_service_by_id(
+    booking_service_id: int, 
+    repo: BookingServiceRepository = Depends(get_booking_service_repo)
+):
+    """Get booking service by ID."""
+    bs = repo.get_by_id(booking_service_id)
+    if bs is None:
         raise HTTPException(status_code=404, detail="Booking service not found")
-    return booking_service
+    return bs
 
 
-@router.post("/api", response_model=BookingServiceSchema)
-def create_booking_service(booking_service: BookingServiceCreate, db: Session = Depends(get_db)):
-    db_booking_service = BookingService(**booking_service.model_dump())
-    db_booking_service.subtotal = calculate_subtotal(db, booking_service.service_id, booking_service.quantity)
-    db.add(db_booking_service)
-    db.commit()
-    db.refresh(db_booking_service)
-    return db_booking_service
+@router.post("/api", response_model=BookingServiceSchema, status_code=201)
+def create_booking_service(
+    booking_service: BookingServiceCreate, 
+    repo: BookingServiceRepository = Depends(get_booking_service_repo),
+    service_svc: ServiceService = Depends(get_service_service),
+    db: Session = Depends(get_db)
+):
+    """Create a new booking service."""
+    service = service_svc.get_service(booking_service.service_id)
+    subtotal = service.price * booking_service.quantity
+    
+    data = booking_service.model_dump()
+    data["subtotal"] = subtotal
+    
+    return repo.create(data)
 
 
 @router.put("/api/{booking_service_id}", response_model=BookingServiceSchema)
-def update_booking_service(booking_service_id: int, booking_service: BookingServiceUpdate, db: Session = Depends(get_db)):
-    db_booking_service = db.query(BookingService).filter(BookingService.id == booking_service_id).first()
-    if db_booking_service is None:
+def update_booking_service(
+    booking_service_id: int, 
+    booking_service: BookingServiceUpdate,
+    repo: BookingServiceRepository = Depends(get_booking_service_repo),
+    service_svc: ServiceService = Depends(get_service_service)
+):
+    """Update a booking service."""
+    bs = repo.get_by_id(booking_service_id)
+    if bs is None:
         raise HTTPException(status_code=404, detail="Booking service not found")
     
     update_data = booking_service.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(db_booking_service, key, value)
     
-    # Recalculate subtotal
-    db_booking_service.subtotal = calculate_subtotal(db, db_booking_service.service_id, db_booking_service.quantity)
+    # Recalculate subtotal if quantity or service changed
+    service_id = update_data.get("service_id", bs.service_id)
+    quantity = update_data.get("quantity", bs.quantity)
+    service = service_svc.get_service(service_id)
+    update_data["subtotal"] = service.price * quantity
     
-    db.commit()
-    db.refresh(db_booking_service)
-    return db_booking_service
+    return repo.update(bs, update_data)
 
 
 @router.delete("/api/{booking_service_id}")
-def delete_booking_service(booking_service_id: int, db: Session = Depends(get_db)):
-    db_booking_service = db.query(BookingService).filter(BookingService.id == booking_service_id).first()
-    if db_booking_service is None:
+def delete_booking_service(
+    booking_service_id: int, 
+    repo: BookingServiceRepository = Depends(get_booking_service_repo)
+):
+    """Delete a booking service."""
+    bs = repo.get_by_id(booking_service_id)
+    if bs is None:
         raise HTTPException(status_code=404, detail="Booking service not found")
     
-    db.delete(db_booking_service)
-    db.commit()
+    repo.delete(bs)
     return {"message": "Booking service deleted successfully"}
 
 
 # Web Routes - Add service to booking
 @router.get("/booking/{booking_id}/add", response_class=HTMLResponse)
-def add_service_to_booking_form(request: Request, booking_id: int, db: Session = Depends(get_db)):
-    booking = db.query(Booking).filter(Booking.id == booking_id).first()
-    if booking is None:
-        raise HTTPException(status_code=404, detail="Booking not found")
-    
-    services = db.query(Service).filter(Service.is_active == True).all()
-    booking_services = db.query(BookingService).filter(BookingService.booking_id == booking_id).all()
+def add_service_to_booking_form(
+    request: Request, 
+    booking_id: int,
+    booking_svc: BookingServiceClass = Depends(get_booking_service),
+    service_svc: ServiceService = Depends(get_service_service),
+    repo: BookingServiceRepository = Depends(get_booking_service_repo)
+):
+    """Form to add services to a booking."""
+    booking = booking_svc.get_booking(booking_id)
+    services = service_svc.get_active_services()
+    booking_services = repo.get_by_booking(booking_id)
     
     return templates.TemplateResponse("bookings/services.html", {
         "request": request, 
@@ -99,28 +137,35 @@ def add_service_to_booking(
     booking_id: int,
     service_id: int = Form(...),
     quantity: int = Form(1),
+    repo: BookingServiceRepository = Depends(get_booking_service_repo),
+    service_svc: ServiceService = Depends(get_service_service),
     db: Session = Depends(get_db)
 ):
-    booking_service = BookingService(
-        booking_id=booking_id,
-        service_id=service_id,
-        quantity=quantity
-    )
-    booking_service.subtotal = calculate_subtotal(db, service_id, quantity)
-    db.add(booking_service)
-    db.commit()
+    """Add a service to a booking."""
+    service = service_svc.get_service(service_id)
+    subtotal = service.price * quantity
+    
+    repo.create({
+        "booking_id": booking_id,
+        "service_id": service_id,
+        "quantity": quantity,
+        "subtotal": subtotal
+    })
     
     return RedirectResponse(url=f"/booking-services/booking/{booking_id}/add", status_code=303)
 
 
 @router.get("/{booking_service_id}/delete")
-def delete_booking_service_web(booking_service_id: int, db: Session = Depends(get_db)):
-    booking_service = db.query(BookingService).filter(BookingService.id == booking_service_id).first()
-    if booking_service is None:
+def delete_booking_service_web(
+    booking_service_id: int, 
+    repo: BookingServiceRepository = Depends(get_booking_service_repo)
+):
+    """Delete a booking service from web interface."""
+    bs = repo.get_by_id(booking_service_id)
+    if bs is None:
         raise HTTPException(status_code=404, detail="Booking service not found")
     
-    booking_id = booking_service.booking_id
-    db.delete(booking_service)
-    db.commit()
+    booking_id = bs.booking_id
+    repo.delete(bs)
     
     return RedirectResponse(url=f"/booking-services/booking/{booking_id}/add", status_code=303)
