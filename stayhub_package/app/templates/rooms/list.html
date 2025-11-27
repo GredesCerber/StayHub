@@ -18,7 +18,7 @@
     <h2 class="mb-0"><i class="bi bi-door-open"></i> Номера</h2>
     <div class="d-flex gap-2">
         <a href="/room-types" class="btn btn-outline-secondary">
-            <i class="bi bi-tags"></i> Управление типами
+            <i class="bi bi-tags"></i> Управление типами номеров
         </a>
         <a href="/rooms/new" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Добавить номер
@@ -94,20 +94,25 @@
                             {% if room_type_map is defined and type_key in room_type_map %}
                                 {% set matched = room_type_map[type_key] %}
                             {% endif %}
+                            {% set display_type = matched.name if matched else room.room_type|replace('_', ' ')|title %}
                             <span class="badge bg-primary-subtle text-primary-emphasis">
-                                {{ matched.name if matched else room.room_type|title }}
-                                {% if matched %}
-                                <span class="text-uppercase small ms-1 text-muted">{{ matched.code }}</span>
-                                {% endif %}
+                                {{ display_type }}
                             </span>
                         </td>
                         <td><i class="bi bi-people"></i> {{ room.capacity }}</td>
                         <td class="text-success fw-bold">${{ "%.2f"|format(room.price_per_night) }}</td>
                         <td>
-                            {% if room.is_available %}
-                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Свободен</span>
+                            {% set status = room.status or ('available' if room.is_available else 'occupied') %}
+                            {% if status == 'occupied' %}
+                            <span class="badge bg-danger"><i class="bi bi-door-closed"></i> Занят</span>
+                            {% elif status == 'turnover' %}
+                            <span class="badge bg-warning text-dark"><i class="bi bi-arrow-repeat"></i> Подготовка</span>
+                            <div class="small text-muted">Пауза 2 суток между заездами</div>
+                            {% elif status == 'reserved' %}
+                            <span class="badge bg-info text-dark"><i class="bi bi-calendar-event"></i> Зарезервирован</span>
+                            <div class="small text-muted">Свободен для других дат</div>
                             {% else %}
-                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Занят</span>
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Свободен</span>
                             {% endif %}
                         </td>
                         <td>{{ room.description or '-' }}</td>

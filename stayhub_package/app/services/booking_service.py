@@ -33,6 +33,11 @@ class BookingService:
     """Service for booking operations with availability checking and cost calculation."""
     
     DEFAULT_AUTO_PAYMENT_METHOD = "card"
+    ROOM_BUFFER_DAYS = 2
+    ROOM_STATUS_AVAILABLE = "available"
+    ROOM_STATUS_RESERVED = "reserved"
+    ROOM_STATUS_TURNOVER = "turnover"
+    ROOM_STATUS_OCCUPIED = "occupied"
 
     def __init__(self, db: Session):
         self.db = db
@@ -42,6 +47,123 @@ class BookingService:
         self.booking_service_repository = BookingServiceRepository(db)
         self.service_repository = ServiceRepository(db)
         self.payment_service = PaymentService(db)
+
+    def _describe_booking_conflicts(
+        self,
+        room_id: int,
+        check_in: date,
+        check_out: date,
+        exclude_booking_id: Optional[int] = None
+    ) -> Optional[str]:
+        """Build a readable summary of overlapping bookings."""
+        conflicts = self.repository.get_conflicting_bookings(
+            room_id,
+            check_in,
+            check_out,
+            exclude_booking_id,
+            buffer_days=self.ROOM_BUFFER_DAYS
+        )
+        if not conflicts:
+            return None
+
+        conflict_chunks: List[str] = []
+        for booking in conflicts[:3]:
+            guest_name_parts = []
+            if booking.guest and booking.guest.first_name:
+                guest_name_parts.append(booking.guest.first_name)
+            if booking.guest and booking.guest.last_name:
+                guest_name_parts.append(booking.guest.last_name)
+            guest_label = " ".join(guest_name_parts).strip() or f"гость #{booking.guest_id}"
+            date_range = (
+                f"{booking.check_in_date.strftime('%d.%m.%Y')}"
+                f"-{booking.check_out_date.strftime('%d.%m.%Y')}"
+            )
+            conflict_chunks.append(
+                f"бронь #{booking.id} ({date_range}) для {guest_label}"
+            )
+
+        remaining = len(conflicts) - len(conflict_chunks)
+        if remaining > 0:
+            conflict_chunks.append(f"и ещё {remaining} пересечений")
+
+        return "; ".join(conflict_chunks)
+
+    def _refresh_room_state(self, room_id: Optional[int]) -> None:
+        """Recalculate room status/is_available based on bookings and buffer."""
+        if not room_id:
+            return
+
+        room = self.room_repository.get_by_id(room_id)
+        if not room:
+            return
+
+        today = date.today()
+        relevant_statuses = {"pending", "confirmed", "completed"}
+        bookings = [
+            b for b in self.repository.get_by_room(room_id)
+            if b.status in relevant_statuses
+        ]
+
+        new_status = self.ROOM_STATUS_AVAILABLE
+        is_available = True
+
+        current_booking = next(
+            (
+                b for b in bookings
+                if b.status in {"pending", "confirmed"}
+                and b.check_in_date <= today < b.check_out_date
+            ),
+            None
+        )
+
+        if current_booking:
+            new_status = self.ROOM_STATUS_OCCUPIED
+            is_available = False
+        else:
+            upcoming_candidates = sorted(
+                (
+                    b for b in bookings
+                    if b.status in {"pending", "confirmed"} and b.check_in_date >= today
+                ),
+                key=lambda b: b.check_in_date
+            )
+            nearest_upcoming = upcoming_candidates[0] if upcoming_candidates else None
+
+            past_candidates = [b for b in bookings if b.check_out_date <= today]
+            recent_departure = (
+                max(past_candidates, key=lambda b: b.check_out_date)
+                if past_candidates
+                else None
+            )
+
+            if nearest_upcoming:
+                days_until = (nearest_upcoming.check_in_date - today).days
+                if days_until < self.ROOM_BUFFER_DAYS:
+                    new_status = self.ROOM_STATUS_TURNOVER
+                    is_available = False
+                else:
+                    new_status = self.ROOM_STATUS_RESERVED
+                    is_available = True
+            elif recent_departure and (today - recent_departure.check_out_date).days < self.ROOM_BUFFER_DAYS:
+                new_status = self.ROOM_STATUS_TURNOVER
+                is_available = False
+
+        updated = False
+        if getattr(room, "status", None) != new_status:
+            room.status = new_status
+            updated = True
+        if room.is_available != is_available:
+            room.is_available = is_available
+            updated = True
+
+        if updated:
+            self.db.add(room)
+            self.db.commit()
+            self.db.refresh(room)
+
+    def refresh_room_state(self, room_id: int) -> None:
+        """Public helper to sync room status on demand (e.g., seeding scripts)."""
+        self._refresh_room_state(room_id)
 
     def _sync_payments_for_status(self, booking: Booking) -> None:
         """Adjust linked payments when booking status changes."""
@@ -109,7 +231,11 @@ class BookingService:
         
         # Check for conflicting bookings
         conflicts = self.repository.get_conflicting_bookings(
-            room_id, check_in, check_out, exclude_booking_id
+            room_id,
+            check_in,
+            check_out,
+            exclude_booking_id,
+            buffer_days=self.ROOM_BUFFER_DAYS
         )
         
         return len(conflicts) == 0
@@ -231,7 +357,8 @@ class BookingService:
         
         # Check room availability
         if not self.check_room_availability(room_id, check_in, check_out):
-            raise RoomNotAvailableException(room_id, str(check_in), str(check_out))
+            conflicts = self._describe_booking_conflicts(room_id, check_in, check_out)
+            raise RoomNotAvailableException(room_id, str(check_in), str(check_out), conflicts)
         
         # Create booking
         booking = self.repository.create(booking_data)
@@ -243,11 +370,14 @@ class BookingService:
         
         self._create_pending_payment(booking.id, booking.total_cost)
 
+        self._refresh_room_state(room_id)
+
         return booking
     
     def update_booking(self, booking_id: int, booking_data: dict) -> Booking:
         """Update booking with availability check."""
         booking = self.get_booking(booking_id)
+        original_room_id = booking.room_id
         
         # Get new values or use existing
         room_id = booking_data.get("room_id", booking.room_id)
@@ -256,7 +386,8 @@ class BookingService:
         
         # Check room availability for new dates/room
         if not self.check_room_availability(room_id, check_in, check_out, booking_id):
-            raise RoomNotAvailableException(room_id, str(check_in), str(check_out))
+            conflicts = self._describe_booking_conflicts(room_id, check_in, check_out, booking_id)
+            raise RoomNotAvailableException(room_id, str(check_in), str(check_out), conflicts)
         
         # Update booking
         booking = self.repository.update(booking, booking_data)
@@ -265,14 +396,20 @@ class BookingService:
         booking.total_cost = self.calculate_booking_cost(booking)
         self.db.commit()
         self.db.refresh(booking)
+
+        self._refresh_room_state(original_room_id)
+        if booking.room_id != original_room_id:
+            self._refresh_room_state(booking.room_id)
         
         return booking
     
     def delete_booking(self, booking_id: int) -> None:
         """Delete booking and associated services."""
         booking = self.get_booking(booking_id)
+        room_id = booking.room_id
         self.booking_service_repository.delete_by_booking(booking_id)
         self.repository.delete(booking)
+        self._refresh_room_state(room_id)
     
     def update_status(self, booking_id: int, status: str) -> Booking:
         """Update booking status."""
@@ -283,6 +420,7 @@ class BookingService:
         booking = self.get_booking(booking_id)
         updated = self.repository.update(booking, {"status": status})
         self._sync_payments_for_status(updated)
+        self._refresh_room_state(updated.room_id)
         return updated
     
     def recalculate_cost(self, booking_id: int) -> Booking:

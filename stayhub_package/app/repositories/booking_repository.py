@@ -1,6 +1,6 @@
 """Booking repository for database operations."""
 from typing import List, Optional
-from datetime import date
+from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from app.repositories.base_repository import BaseRepository
@@ -45,14 +45,18 @@ class BookingRepository(BaseRepository[Booking]):
         room_id: int, 
         check_in: date, 
         check_out: date,
-        exclude_booking_id: Optional[int] = None
+        exclude_booking_id: Optional[int] = None,
+        buffer_days: int = 0
     ) -> List[Booking]:
-        """Get bookings that conflict with given date range."""
+        """Get bookings that conflict with given date range (with optional buffer)."""
+        buffer_delta = timedelta(days=buffer_days)
+        window_start = check_in - buffer_delta
+        window_end = check_out + buffer_delta
         query = self.db.query(Booking).filter(
             Booking.room_id == room_id,
             Booking.status.notin_(["cancelled"]),
-            Booking.check_in_date < check_out,
-            Booking.check_out_date > check_in
+            Booking.check_in_date < window_end,
+            Booking.check_out_date > window_start
         )
         
         if exclude_booking_id:

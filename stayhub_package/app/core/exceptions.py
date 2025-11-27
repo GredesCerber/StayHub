@@ -1,4 +1,5 @@
 """Пользовательские исключения приложения StayHub."""
+from typing import Optional
 from fastapi import HTTPException, status
 
 
@@ -19,9 +20,12 @@ class NotFoundException(StayHubException):
 
 class RoomNotAvailableException(StayHubException):
     """Исключение недоступности номера для бронирования."""
-    def __init__(self, room_id: int, check_in: str, check_out: str):
+    def __init__(self, room_id: int, check_in: str, check_out: str, conflicts: Optional[str] = None):
+        message = f"Номер {room_id} недоступен с {check_in} по {check_out}"
+        if conflicts:
+            message = f"{message}. Конфликтующие бронирования: {conflicts}"
         super().__init__(
-            detail=f"Номер {room_id} недоступен с {check_in} по {check_out}",
+            detail=message,
             status_code=status.HTTP_409_CONFLICT
         )
 

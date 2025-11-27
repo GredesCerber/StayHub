@@ -38,6 +38,7 @@ class RoomFilter(BaseModel):
 class Room(RoomBase):
     """Schema for room response."""
     id: int
+    status: str = Field(default="available", description="Текущий статус номера")
 
     class Config:
         from_attributes = True

@@ -11,4 +11,5 @@ class Room(Base):
     capacity = Column(Integer, nullable=False, default=1)
     price_per_night = Column(Float, nullable=False)
     is_available = Column(Boolean, default=True)
+    status = Column(String(20), nullable=False, default="available")
     description = Column(String(255), nullable=True)

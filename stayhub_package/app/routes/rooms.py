@@ -105,7 +105,12 @@ def rooms_list(
         rooms = service.get_all_rooms()
 
     room_type_options = service.get_room_type_options()
-    room_type_map = {t.name.lower(): t for t in room_type_options}
+    room_type_map = {}
+    for room_type in room_type_options:
+        if room_type.name:
+            room_type_map[room_type.name.lower()] = room_type
+        if getattr(room_type, "code", None):
+            room_type_map[room_type.code.lower()] = room_type
 
     return templates.TemplateResponse("rooms/list.html", {
         "request": request,
