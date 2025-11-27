@@ -78,7 +78,8 @@ class BookingService:
         if check_in >= check_out:
             raise ValidationException("Check-out date must be after check-in date")
         
-        if check_in < date.today():
+        # Only validate check-in date for new bookings (exclude_booking_id is None)
+        if exclude_booking_id is None and check_in < date.today():
             raise ValidationException("Check-in date cannot be in the past")
         
         # Check room exists
@@ -126,9 +127,10 @@ class BookingService:
                 total_cost=0.0
             )
         
-        # Calculate nights
+        # Calculate nights - dates should already be validated at booking creation
         nights = (booking.check_out_date - booking.check_in_date).days
         if nights <= 0:
+            # This shouldn't happen with proper validation, but handle gracefully
             nights = 1
         
         # Get room price

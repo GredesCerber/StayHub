@@ -75,8 +75,12 @@
                         <td><i class="bi bi-box-arrow-in-right text-success"></i> {{ booking.check_in_date }}</td>
                         <td><i class="bi bi-box-arrow-right text-danger"></i> {{ booking.check_out_date }}</td>
                         <td>
+                            {% if booking.check_in_date and booking.check_out_date %}
                             {% set nights = (booking.check_out_date - booking.check_in_date).days %}
                             <span class="badge bg-light text-dark">{{ nights }} night{{ 's' if nights != 1 else '' }}</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark">-</span>
+                            {% endif %}
                         </td>
                         <td class="fw-bold text-success">${{ "%.2f"|format(booking.total_cost or 0) }}</td>
                         <td>

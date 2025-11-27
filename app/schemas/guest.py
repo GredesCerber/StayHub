@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional
-import re
+
+from app.core.validators import EMAIL_PATTERN, validate_email
 
 
 class GuestBase(BaseModel):
@@ -13,9 +14,8 @@ class GuestBase(BaseModel):
     
     @field_validator('email')
     @classmethod
-    def validate_email(cls, v):
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_pattern, v):
+    def validate_email_format(cls, v):
+        if not validate_email(v):
             raise ValueError('Invalid email format')
         return v
 
@@ -36,11 +36,9 @@ class GuestUpdate(BaseModel):
     
     @field_validator('email')
     @classmethod
-    def validate_email(cls, v):
-        if v is not None:
-            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-            if not re.match(email_pattern, v):
-                raise ValueError('Invalid email format')
+    def validate_email_format(cls, v):
+        if v is not None and not validate_email(v):
+            raise ValueError('Invalid email format')
         return v
 
 

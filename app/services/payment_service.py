@@ -6,6 +6,7 @@ from app.repositories.payment_repository import PaymentRepository
 from app.repositories.booking_repository import BookingRepository
 from app.models.payment import Payment
 from app.core.exceptions import NotFoundException, ValidationException
+from app.core.validators import PAYMENT_METHODS, PAYMENT_STATUSES
 
 
 class PaymentService:
@@ -62,10 +63,9 @@ class PaymentService:
             raise ValidationException("Payment amount must be positive")
         
         # Validate payment method
-        valid_methods = ["cash", "card", "transfer"]
         method = payment_data.get("payment_method", "")
-        if method not in valid_methods:
-            raise ValidationException(f"Invalid payment method. Must be one of: {', '.join(valid_methods)}")
+        if method not in PAYMENT_METHODS:
+            raise ValidationException(f"Invalid payment method. Must be one of: {', '.join(PAYMENT_METHODS)}")
         
         # Set payment date if not provided
         if not payment_data.get("payment_date"):
@@ -82,10 +82,9 @@ class PaymentService:
             raise ValidationException("Payment amount must be positive")
         
         # Validate payment method if provided
-        valid_methods = ["cash", "card", "transfer"]
         method = payment_data.get("payment_method")
-        if method and method not in valid_methods:
-            raise ValidationException(f"Invalid payment method. Must be one of: {', '.join(valid_methods)}")
+        if method and method not in PAYMENT_METHODS:
+            raise ValidationException(f"Invalid payment method. Must be one of: {', '.join(PAYMENT_METHODS)}")
         
         return self.repository.update(payment, payment_data)
     
@@ -96,9 +95,8 @@ class PaymentService:
     
     def update_status(self, payment_id: int, status: str) -> Payment:
         """Update payment status."""
-        valid_statuses = ["pending", "completed", "refunded"]
-        if status not in valid_statuses:
-            raise ValidationException(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+        if status not in PAYMENT_STATUSES:
+            raise ValidationException(f"Invalid status. Must be one of: {', '.join(PAYMENT_STATUSES)}")
         
         payment = self.get_payment(payment_id)
         return self.repository.update(payment, {"status": status})
